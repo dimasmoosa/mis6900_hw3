@@ -1,11 +1,10 @@
 import random
-
 import numpy as np
 import pandas as pd
 import simpy
 import statistics
-
-from numpy.random import default_rng
+import calendar
+import time
 
 
 class Cafeteria(object):
@@ -32,7 +31,7 @@ class Cafeteria(object):
         yield self.env.timeout(random.randint(60, 181))
 
     def make_food(self, customer):
-        yield self.env.timeout(random.randint(180, 361))
+        yield self.env.timeout(random.randint(180, 421))
 
     def get_utensils(self, customers):
         # print(f"get utensils before: {env.now}")
@@ -126,8 +125,8 @@ def run_cafeteria(env, cafeteria, is_quiet):
     customer = 0
 
     while True:
-        # wait 1-5 minutes before generating a new person
-        yield env.timeout(random.randint(60, 301))
+        # wait 1-3 minutes before generating a new person
+        yield env.timeout(random.randint(60, 181))
 
         customer += 1
         env.process(get_lunch(env, customer, cafeteria, is_quiet))
@@ -220,11 +219,29 @@ def summarize_df(df):
     return summary_df
 
 def main():
-    num_kiosks = 2
+    # resource numbers / changes can be made to these settings
+    num_kiosks = 3
     num_chefs = 2
     num_utensil_dispensers = 4
     num_pop_machines = 2
+
+    # whether to supress event timestamps or print them / up to user
     is_quiet = True
+
+    # how long to run in seconds / up to user to change
+    duration = 7200
+
+    # time stamp / not recommended to change
+    curr_time_stamp = calendar.timegm(time.gmtime())
+
+    # path of output file / nothing recommended to change below this
+    data_path = './output/' + 'd' + str(duration) + '_k' + str(num_kiosks) + '_c' + str(num_chefs)\
+              + '_u' + str(num_utensil_dispensers) + '_p' + str(num_pop_machines) + '_ts' + \
+           str(curr_time_stamp) + '.csv'
+
+    summary_path = './output/' + 'd' + str(duration) + '_k' + str(num_kiosks) + '_c' + str(
+        num_chefs) + '_u' + str(num_utensil_dispensers) + '_p' + str(num_pop_machines) + '_ts' + \
+           str(curr_time_stamp) + '_summary.csv'
 
     env = simpy.Environment()
 
@@ -234,17 +251,21 @@ def main():
 
     env.process(run_cafeteria(env, cafeteria, is_quiet))
 
-    env.run(until=3600)
+    env.run(until=duration)
 
     df = wait_times_to_df(cafeteria.full_wait_times, cafeteria.kiosk_wait_times,
                           cafeteria.chef_wait_times, cafeteria.utensil_wait_times,
                           cafeteria.pop_wait_times)
 
+    df.to_csv(data_path)
+
     df_ = summarize_df(df)
+    df_.to_csv(summary_path)
+
     print(df_)
 
     avg = get_average_wait_time(cafeteria.full_wait_times)
-    print(f"Average wait time per customer: {avg[0]} hours, {avg[1]} minutes, {avg[2]} seconds")
+    print(f"\nAverage wait time per customer: {avg[0]} hours, {avg[1]} minutes, {avg[2]} seconds")
 
 if __name__ == '__main__':
     main()
